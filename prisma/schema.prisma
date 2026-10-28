@@ -1,0 +1,94 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  CUSTOMER
+  RIDER
+  ADMIN
+}
+
+enum AccountStatus {
+  ACTIVE
+  BLOCKED
+}
+
+enum RiderVerification {
+  PENDING
+  APPROVED
+  SUSPENDED
+}
+
+enum Availability {
+  AVAILABLE
+  BUSY
+  OFFLINE
+}
+
+model City {
+  id        Int            @id @default(autoincrement())
+  name      String         @unique
+  isActive  Boolean        @default(true)
+  users     User[]
+  addresses Address[]
+  riders    RiderProfile[]
+}
+
+model User {
+  id             Int           @id @default(autoincrement())
+  name           String
+  mobile         String        @unique
+  email          String?       @unique
+  passwordHash   String
+  role           Role          @default(CUSTOMER)
+  status         AccountStatus @default(ACTIVE)
+  mobileVerified Boolean       @default(false)
+  failedAttempts Int           @default(0)
+  lockedUntil    DateTime?
+  cityId         Int?
+  city           City?         @relation(fields: [cityId], references: [id])
+  addresses      Address[]
+  riderProfile   RiderProfile?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@index([cityId])
+}
+
+model Address {
+  id          Int     @id @default(autoincrement())
+  userId      Int
+  user        User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  label       String  @default("Home")
+  fullAddress String  @db.Text
+  cityId      Int
+  city        City    @relation(fields: [cityId], references: [id])
+  isDefault   Boolean @default(false)
+  latitude    Float?
+  longitude   Float?
+
+  @@index([userId])
+  @@index([cityId])
+}
+
+model RiderProfile {
+  id           Int               @id @default(autoincrement())
+  userId       Int               @unique
+  user         User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cnic         String            @unique
+  vehicleType  String
+  vehicleNo    String
+  cityId       Int
+  city         City              @relation(fields: [cityId], references: [id])
+  verification RiderVerification @default(PENDING)
+  availability Availability      @default(OFFLINE)
+  rating       Float             @default(0)
+  createdAt    DateTime          @default(now())
+
+  @@index([cityId])
+}
